@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { auth } from "@clerk/nextjs/server"
 import crypto from 'crypto' // Import crypto for generating secret keys
+import { sendTelegramNotification } from '../services/telegramService' // Import the Telegram service
 
 // Helper функция за проверка дали сградата принадлежи на потребителя
 async function verifyBuildingOwnership(buildingId) {
@@ -499,7 +500,7 @@ export async function submitSignal(formData) {
     // Намираме сградата по slug
     const building = await prisma.building.findUnique({
       where: { slug },
-      select: { id: true }
+      select: { id: true, name: true, telegramChatId: true } // Select telegramChatId
     })
 
     if (!building) {
@@ -517,6 +518,12 @@ export async function submitSignal(formData) {
         secretKey: crypto.randomUUID() // Генерираме уникален ключ
       }
     })
+
+    // --- Send Telegram Notification ---
+    if (building.telegramChatId) {
+      const telegramMessage = `<b>Нов сигнал за ${building.name}:</b>\n\n<b>Заглавие:</b> ${title}\n<b>Описание:</b> ${description}\n<b>Апартамент:</b> ${apartmentNumber || 'Анонимен'}`;
+      await sendTelegramNotification(building.telegramChatId, telegramMessage);
+    }
 
     revalidatePath(`/portal/${slug}`)
     // Връщаме ID и SecretKey, за да може жителят да управлява сигнала си
@@ -599,6 +606,8 @@ export async function updateBuildingSettings(formData) {
   const buildingId = formData.get('buildingId')
   const publicDisplayBalance = formData.get('publicDisplayBalance') === 'true'
   const feeConfigJson = formData.get('feeConfig')
+  const telegramChatId = formData.get('telegramChatId') // Get telegramChatId from form data
+console.log(telegramChatId);
 
   if (!buildingId) {
     return { success: false, message: "Невалидни данни!" }
@@ -625,6 +634,7 @@ export async function updateBuildingSettings(formData) {
       data: {
         publicDisplayBalance,
         feeConfig,
+        telegramChatId: telegramChatId || null, // Update telegramChatId
       },
     })
 
