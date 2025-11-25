@@ -1,0 +1,76 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://postgres.mgiceujxkcvkxfmfgndl:IAs38lYqRg1jGqZm@aws-1-eu-west-1.pooler.supabase.com:5432/postgres?connect_timeout=30"
+}
+
+// Твоите модели
+
+model Building {
+  id                   String      @id @default(cuid()) // Уникално ID (напр. cl9...)
+  name                 String      // "Бл. 24, Вх. А"
+  address              String?
+  cashBalance          Float       @default(0) // Пари в касата
+  feeConfig            Json?       // [{ id: 'dog', label: 'Куче', price: 2.00 }, ...] - Конфигурация на такси за атрибути
+  publicDisplayBalance Boolean     @default(true) // Add this field
+  userId               String      // Clerk User ID - всеки потребител вижда само своите сгради
+  slug                 String      @unique @default(cuid()) // Публичен достъп ключ за жителите
+  apartments           Apartment[] // Връзка: Една сграда има много апартаменти
+  expenses             Expense[]   // Връзка: Една сграда има много разходи
+  signals              Signal[]    // Връзка: Една сграда има много сигнали
+  createdAt            DateTime    @default(now())
+}
+
+model Apartment {
+  id          String   @id @default(cuid())
+  number      String   // "Ап. 3"
+  ownerName   String?
+  residents   Int      @default(1) // Брой хора
+  balance     Float    @default(0) // +50 (депозит) или -20 (дълг)
+  attributes  String[] @default([]) // ["dog", "elevator"] - Допълнителни атрибути
+  
+  buildingId  String
+  building    Building @relation(fields: [buildingId], references: [id])
+  
+  payments    Payment[] // История на плащанията на този апартамент
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  amount      Float    // Сума (може да е отрицателна за CUSTOM_CHARGE)
+  type        String   // "DEPOSIT", "MONTHLY_FEE", "CUSTOM_CHARGE"
+  description String?  // Описание за CUSTOM_CHARGE
+  date        DateTime @default(now())
+  
+  apartmentId String
+  apartment   Apartment @relation(fields: [apartmentId], references: [id])
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  amount      Float
+  description String   // "Крушки"
+  imageUrl    String?  // Снимка от касовата бележка
+  date        DateTime @default(now())
+  
+  buildingId  String
+  building    Building @relation(fields: [buildingId], references: [id])
+}
+
+model Signal {
+  id              String   @id @default(cuid())
+  title           String   // "Изгоряла крушка на 3-ти етаж"
+  description     String   // Подробно описание
+  status          String   @default("OPEN") // OPEN, RESOLVED
+  apartmentNumber String? // Опционално: "От Ап. 5"
+  createdAt       DateTime @default(now())
+  secretKey       String   @default(cuid())
+  
+  buildingId      String
+  building        Building @relation(fields: [buildingId], references: [id])
+}
