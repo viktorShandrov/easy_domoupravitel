@@ -4,7 +4,8 @@ import prisma from "@/lib/prisma"
 import { revalidatePath } from "next/cache"
 import { auth } from "@clerk/nextjs/server"
 import crypto from 'crypto' // Import crypto for generating secret keys
-import { sendTelegramNotification } from '../services/telegramService' // Import the Telegram service
+import { sendTelegramNotification } from '@/services/telegramService' // Import the Telegram service
+import { generateUniqueSixDigitCode } from '@/lib/utils' // Import the helper function
 
 // Helper функция за проверка дали сградата принадлежи на потребителя
 async function verifyBuildingOwnership(buildingId) {
@@ -42,6 +43,7 @@ export async function seedDatabase() {
       address: "ж.к. Младост 4",
       cashBalance: 0,
       userId, // Свързваме сградата с текущия потребител
+      pairingCode: await generateUniqueSixDigitCode(), // Generate and assign pairing code
       apartments: {
         create: [
           { number: "Ап. 1", ownerName: "Иван Петров", residents: 2, balance: -15.00 },

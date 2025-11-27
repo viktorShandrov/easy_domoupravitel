@@ -19,6 +19,7 @@ model Building {
   feeConfig            Json?       // [{ id: 'dog', label: 'Куче', price: 2.00 }, ...] - Конфигурация на такси за атрибути
   publicDisplayBalance Boolean     @default(true) // Add this field
   telegramChatId       String? // New: Store Telegram Group Chat ID
+  pairingCode          String?     @unique // New: For Telegram bot pairing
   userId               String      // Clerk User ID - всеки потребител вижда само своите сгради
   slug                 String      @unique @default(cuid()) // Публичен достъп ключ за жителите
   apartments           Apartment[] // Връзка: Една сграда има много апартаменти

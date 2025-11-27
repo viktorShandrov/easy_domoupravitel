@@ -115,6 +115,42 @@ export default function BuildingSettingsDialog({ building }) {
 
             {/* --- ТАБ 1: ОБЩИ НАСТРОЙКИ --- */}
             <TabsContent value="general" className="space-y-4 border rounded-md p-4 bg-slate-50/50">
+                                <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
+                  <h3 className="text-lg font-bold text-gray-800 mb-2">Свързване с Telegram</h3>
+                  
+                  {/* Ако вече е свързано */}
+                  {building.telegramChatId ? (
+                    <div className="text-green-600 flex items-center gap-2">
+                      <span className="text-xl">✅</span>
+                      <span>Тази сграда е успешно свързана с група!</span>
+                      {/* Опция за разкачане */}
+                    </div>
+                  ) : (
+                    /* Ако НЕ Е свързано - покажи кода */
+                    <div>
+                      <p className="mb-4 text-gray-600">
+                        За да получавате известия, изпълнете тези 2 стъпки:
+                      </p>
+                      <ol className="list-decimal list-inside space-y-2 mb-4 text-gray-700">
+                        <li>Създайте група или канал в Telegram и добавете бота: <strong>@TvoyatBot</strong></li>
+                        <li>Напишете следното съобщение вътре в групата:</li>
+                      </ol>
+                      
+                      <div className="bg-white border-2 border-dashed border-gray-400 p-4 text-center rounded-xl cursor-pointer hover:bg-gray-50 transition"
+                          onClick={() => navigator.clipboard.writeText(`/connect ${building.pairingCode}`)}>
+                        <span className="text-2xl font-mono font-bold text-blue-600">
+                          /connect {building.pairingCode}
+                        </span>
+                        <p className="text-xs text-gray-400 mt-2">(Натиснете, за да копирате)</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+
+
+
+                
                 <div className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm bg-white">
                     <div className="space-y-0.5">
                         <Label className="text-base font-semibold">Публична Каса</Label>
