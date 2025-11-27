@@ -268,8 +268,9 @@ export default function ApartmentRow({ apt, buildingId, feeConfig }) {
                               />
                               <span className="text-sm">{configItem.label}</span>
                             </div>
+                            {/* ТУК Е ПОПРАВКАТА: Добавено е parseFloat() */}
                             <span className="text-xs text-slate-500">
-                              {configItem.price ? `${configItem.price.toFixed(2)} лв.` : '0.00 лв.'}
+                              {configItem.price ? `${parseFloat(configItem.price).toFixed(2)} лв.` : '0.00 лв.'}
                             </span>
                           </label>
                         ))}
