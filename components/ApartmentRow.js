@@ -7,74 +7,60 @@ import { Label } from "@/components/ui/label"
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Settings } from "lucide-react"
+import { Settings, Users, ArrowLeft, History } from "lucide-react"
 import { addPayment, updateApartment, deleteApartment, addCustomCharge } from "@/app/actions"
 
 export default function ApartmentRow({ apt, buildingId, feeConfig }) {
   const [isOpen, setIsOpen] = useState(false)
-  const [isEditMode, setIsEditMode] = useState(false)
-  const [isChargeMode, setIsChargeMode] = useState(false) // Toggle between Deposit and Charge
-  const [amount, setAmount] = useState('') // Държим сумата в state, за да я контролираме
-  const [chargeAmount, setChargeAmount] = useState('') // Amount for custom charge
-  const [chargeDescription, setChargeDescription] = useState('') // Description for custom charge
+  const [view, setView] = useState('main') // 'main', 'history', 'edit'
+  const [isChargeMode, setIsChargeMode] = useState(false) 
+  
+  const [amount, setAmount] = useState('') 
+  const [chargeAmount, setChargeAmount] = useState('') 
+  const [chargeDescription, setChargeDescription] = useState('') 
   const [ownerName, setOwnerName] = useState(apt.ownerName || '')
   const [residents, setResidents] = useState(apt.residents.toString())
-  const [attributes, setAttributes] = useState(apt.attributes || []) // Array of attribute strings
+  const [attributes, setAttributes] = useState(apt.attributes || [])
 
-  // Reset edit mode when dialog closes
   useEffect(() => {
     if (!isOpen) {
-      setIsEditMode(false)
+      setView('main')
       setIsChargeMode(false)
-      // Reset form values to current apartment values
-      setOwnerName(apt.ownerName || '')
-      setResidents(apt.residents.toString())
-      setAttributes(apt.attributes || [])
       setAmount('')
       setChargeAmount('')
       setChargeDescription('')
     }
-  }, [isOpen, apt.ownerName, apt.residents, apt.attributes])
+  }, [isOpen])
 
-  // Изчисляваме дали има дълг (ако балансът е -20, дългът е 20)
   const debt = apt.balance < 0 ? Math.abs(apt.balance) : 0
+  const isDebt = apt.balance < 0;
 
   async function handleSubmit(formData) {
     await addPayment(formData)
     setIsOpen(false)
-    setAmount('') // Чистим полето след успех
+    setAmount('') 
   }
 
-  // Функция, която попълва цялата сума
   function fillFullDebt() {
     setAmount(debt.toString())
   }
 
-  // Функция за форматиране на датата
   function formatDate(dateString) {
     const date = new Date(dateString)
-    return date.toLocaleDateString('bg-BG', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    })
+    return date.toLocaleDateString('bg-BG', { day: '2-digit', month: '2-digit', year: 'numeric' })
   }
 
-  // Функция за форматиране на типа плащане
   function formatPaymentType(type) {
     if (type === 'MONTHLY_FEE') return 'Месечна такса'
-    if (type === 'DEPOSIT') return 'Депозит'
-    if (type === 'CUSTOM_CHARGE') return 'Персонализирана такса'
+    if (type === 'DEPOSIT') return 'Вноска'
+    if (type === 'CUSTOM_CHARGE') return 'Индивидуална такса'
     return type
   }
 
-  // Toggle attribute checkbox
   function toggleAttribute(value) {
     if (attributes.includes(value)) {
       setAttributes(attributes.filter(attr => attr !== value))
@@ -83,391 +69,237 @@ export default function ApartmentRow({ apt, buildingId, feeConfig }) {
     }
   }
 
-  // Handle custom charge submit
   async function handleChargeSubmit(e) {
     e.preventDefault()
     const formData = new FormData()
     formData.append('apartmentId', apt.id)
     formData.append('amount', chargeAmount)
     formData.append('description', chargeDescription)
-
-    const result = await addCustomCharge(formData)
-    if (result.success) {
-      setIsOpen(false)
-      setChargeAmount('')
-      setChargeDescription('')
-    } else {
-      alert(result.message || 'Грешка при добавяне на задължение!')
-    }
+    await addCustomCharge(formData)
+    setIsOpen(false)
   }
 
-  // Функция за обработка на редактиране
   async function handleEditSubmit(e) {
     e.preventDefault()
     const formData = new FormData()
     formData.append('apartmentId', apt.id)
     formData.append('ownerName', ownerName)
     formData.append('residents', residents)
-    // Add attributes array
-    attributes.forEach(attr => {
-      formData.append('attributes[]', attr)
-    })
-
-    const result = await updateApartment(formData)
-    if (result.success) {
-      setIsEditMode(false)
-      setIsOpen(false)
-    } else {
-      alert(result.message || 'Грешка при обновяване!')
-    }
+    attributes.forEach(attr => formData.append('attributes[]', attr))
+    await updateApartment(formData)
+    setView('main')
   }
 
-  // Функция за обработка на изтриване
   async function handleDelete() {
-    if (!confirm(`Сигурни ли сте, че искате да изтриете ${apt.number}?`)) {
-      return
-    }
-
+    if (!confirm(`Сигурни ли сте?`)) return
     const formData = new FormData()
     formData.append('apartmentId', apt.id)
-
-    const result = await deleteApartment(formData)
-    if (result.success) {
-      setIsOpen(false)
-    } else {
-      alert(result.message || 'Грешка при изтриване!')
-    }
+    await deleteApartment(formData)
+    setIsOpen(false)
   }
 
   return (
-    <div className="flex justify-between items-center p-4 hover:bg-slate-50 transition-colors border-b last:border-0">
-      {/* ЛЯВА ЧАСТ: Информация */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
-        <div className="flex items-center gap-2">
-            <span className="font-bold text-slate-700 bg-slate-200 px-2 py-1 rounded text-sm w-16 text-center">
-                {apt.number}
-            </span>
-        </div>
-        <div className="flex flex-col">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-slate-800 font-medium">{apt.ownerName}</span>
-              {apt.attributes && apt.attributes.length > 0 && feeConfig && Array.isArray(feeConfig) && (
-                <div className="flex gap-1 flex-wrap">
-                  {apt.attributes.map((attrId) => {
-                    const configItem = feeConfig.find(item => item.id === attrId)
-                    if (configItem) {
-                      return (
-                        <span 
-                          key={attrId}
-                          className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full"
-                        >
-                          {configItem.label}
-                        </span>
-                      )
-                    }
-                    return null
-                  })}
-                </div>
-              )}
-            </div>
-            <span className="text-xs text-slate-400">{apt.residents} живущи</span>
-        </div>
-      </div>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       
-      {/* ДЯСНА ЧАСТ */}
-      <div className="flex items-center gap-4">
-        <div className="text-right hidden sm:block">
-            <div className={`font-bold text-lg ${apt.balance < 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-                {apt.balance > 0 ? '+' : ''}{apt.balance} лв.
+      {/* КАРТА (TRIGGER) */}
+      <DialogTrigger asChild>
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 active:scale-[0.98] transition-transform cursor-pointer relative overflow-hidden group">
+            <div className="flex justify-between items-start mb-3">
+                <div className="bg-slate-100 text-slate-600 font-bold px-3 py-1 rounded-lg text-sm">
+                    {apt.number}
+                </div>
+                <div className="flex gap-1">
+                    {apt.attributes?.map(a => (
+                        <div key={a} className="w-2 h-2 rounded-full bg-blue-400"></div>
+                    ))}
+                </div>
             </div>
-            <div className="text-[10px] text-slate-400 uppercase tracking-wider">Баланс</div>
+            <div className="mb-6">
+                <h3 className="font-bold text-slate-900 text-lg truncate mb-1">{apt.ownerName}</h3>
+                <div className="text-slate-500 text-sm flex items-center gap-1">
+                    <Users className="w-3 h-3" /> {apt.residents} живущи
+                </div>
+            </div>
+            <div className="flex justify-between items-end">
+                <div>
+                    <div className="text-[10px] text-slate-400 uppercase font-bold">Баланс</div>
+                    <div className={`text-2xl font-black ${isDebt ? 'text-red-500' : 'text-emerald-500'}`}>
+                        {apt.balance > 0 ? '+' : ''}{apt.balance.toFixed(2)}
+                    </div>
+                </div>
+                <div className={`h-10 px-4 rounded-xl flex items-center justify-center font-bold text-sm transition-colors ${isDebt ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                    {isDebt ? 'ПЛАТИ' : 'ВНЕСИ'}
+                </div>
+            </div>
+        </div>
+      </DialogTrigger>
+
+      {/* МОДАЛЕН ПРОЗОРЕЦ (СЪДЪРЖАНИЕ) - ТУК Е ПРОМЯНАТА (h-[90vh]) */}
+      <DialogContent className="sm:max-w-[425px] p-0 overflow-hidden bg-slate-50 rounded-3xl border-0 h-[90vh] flex flex-col">
+        
+        {/* HEADER */}
+        <div className="bg-white p-4 border-b shrink-0 flex items-center justify-between">
+            {view === 'main' ? (
+                <>
+                    <h2 className="text-lg font-bold text-slate-900">{apt.number} <span className="font-normal text-slate-500">| {apt.ownerName}</span></h2>
+                    <Button variant="ghost" size="icon" onClick={() => setView('edit')}>
+                        <Settings className="w-5 h-5 text-slate-400" />
+                    </Button>
+                </>
+            ) : (
+                <>
+                    <Button variant="ghost" size="sm" className="gap-2 pl-0 hover:bg-transparent text-slate-600" onClick={() => setView('main')}>
+                        <ArrowLeft className="w-5 h-5" /> Назад
+                    </Button>
+                    <span className="font-bold text-slate-700">
+                        {view === 'history' ? 'История на плащания' : 'Редактиране'}
+                    </span>
+                    <div className="w-8"></div>
+                </>
+            )}
         </div>
 
-        <Dialog open={isOpen} onOpenChange={setIsOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm" variant={apt.balance < 0 ? "destructive" : "outline"}>
-              {apt.balance < 0 ? 'Плати' : 'Внеси'}
-            </Button>
-          </DialogTrigger>
-          
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <DialogTitle>
-                    {isEditMode ? 'Редактиране на апартамент' : (apt.balance < 0 ? 'Погасяване на задължение' : 'Внасяне на депозит')}
-                  </DialogTitle>
-                  <DialogDescription>
-                    {isEditMode ? (
-                      `Обновете информацията за ${apt.number}`
-                    ) : (
-                      <>
-                        Каса на: <b>{apt.number} ({apt.ownerName})</b>.
-                        <br/>
-                        Текущ баланс: <span className={apt.balance < 0 ? 'text-red-500 font-bold' : 'text-green-600'}>{apt.balance} лв.</span>
-                      </>
-                    )}
-                  </DialogDescription>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                  onClick={() => setIsEditMode(!isEditMode)}
-                  type="button"
-                >
-                  <Settings className="h-4 w-4" />
-                </Button>
-              </div>
-            </DialogHeader>
+        {/* SCROLLABLE BODY */}
+        <div className="flex-1 overflow-y-auto p-6">
+            
+            {/* VIEW: MAIN */}
+            {view === 'main' && (
+                <div className="space-y-6">
+                    <div className={`text-center p-6 rounded-3xl ${isDebt ? 'bg-red-50' : 'bg-emerald-50'}`}>
+                        <p className="text-xs uppercase font-bold tracking-widest text-slate-400 mb-1">Текущ Баланс</p>
+                        <p className={`text-4xl font-black ${isDebt ? 'text-red-500' : 'text-emerald-500'}`}>
+                            {apt.balance > 0 ? '+' : ''}{apt.balance.toFixed(2)} <span className="text-lg">лв.</span>
+                        </p>
+                    </div>
 
-            {isEditMode ? (
-              /* Edit Mode: Show Edit Form */
-              <form onSubmit={handleEditSubmit} className="grid gap-6 py-4">
-                <div className="space-y-3">
-                  <div className="grid w-full items-center gap-1.5">
-                    <Label htmlFor="editOwnerName">Собственик</Label>
-                    <Input
-                      id="editOwnerName"
-                      name="ownerName"
-                      type="text"
-                      placeholder="Име на собственика"
-                      value={ownerName}
-                      onChange={(e) => setOwnerName(e.target.value)}
-                      required
-                      autoFocus
-                    />
-                  </div>
+                    <div className="bg-slate-200 p-1 rounded-xl flex">
+                        <button onClick={() => setIsChargeMode(false)} className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all ${!isChargeMode ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>
+                            ВНАСЯНЕ
+                        </button>
+                        <button onClick={() => setIsChargeMode(true)} className={`flex-1 py-3 rounded-lg text-sm font-bold transition-all ${isChargeMode ? 'bg-white shadow-sm text-red-600' : 'text-slate-500'}`}>
+                            НАЧИСЛЯВАНЕ
+                        </button>
+                    </div>
 
-                  <div className="grid w-full items-center gap-1.5">
-                    <Label htmlFor="editResidents">Брой живущи</Label>
-                    <Input
-                      id="editResidents"
-                      name="residents"
-                      type="number"
-                      min="1"
-                      placeholder="1"
-                      value={residents}
-                      onChange={(e) => setResidents(e.target.value)}
-                      required
-                    />
-                  </div>
+                    {!isChargeMode ? (
+                        <form action={handleSubmit} className="space-y-4">
+                            <input type="hidden" name="apartmentId" value={apt.id} />
+                            <input type="hidden" name="buildingId" value={buildingId} />
+                            
+                            {debt > 0 && (
+                                <div onClick={fillFullDebt} className="bg-white border border-red-100 p-4 rounded-xl flex justify-between items-center shadow-sm active:scale-95 transition-transform cursor-pointer">
+                                    <span className="text-red-600 font-bold text-sm">Погаси целия дълг</span>
+                                    <span className="bg-red-100 text-red-700 px-3 py-1 rounded-lg font-bold text-sm">{debt.toFixed(2)} лв.</span>
+                                </div>
+                            )}
 
-                  <div className="grid w-full items-center gap-1.5">
-                    <Label>Допълнителни атрибути</Label>
-                    {feeConfig && Array.isArray(feeConfig) && feeConfig.length > 0 ? (
-                      <div className="space-y-2">
-                        {feeConfig.map((configItem) => (
-                          <label key={configItem.id} className="flex items-center justify-between gap-2 cursor-pointer p-2 border border-slate-200 rounded hover:bg-slate-50">
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                checked={attributes.includes(configItem.id)}
-                                onChange={() => toggleAttribute(configItem.id)}
-                                className="w-4 h-4 rounded border-slate-300"
-                              />
-                              <span className="text-sm">{configItem.label}</span>
+                            <div className="relative">
+                                <Input 
+                                    type="number" name="amount" value={amount} onChange={e => setAmount(e.target.value)} 
+                                    placeholder="0.00" 
+                                    className="h-16 text-3xl font-bold text-center bg-white rounded-xl border-slate-200 focus:ring-emerald-500" 
+                                    autoFocus
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">BGN</span>
                             </div>
-                            {/* ТУК Е ПОПРАВКАТА: Добавено е parseFloat() */}
-                            <span className="text-xs text-slate-500">
-                              {configItem.price ? `${parseFloat(configItem.price).toFixed(2)} лв.` : '0.00 лв.'}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
+
+                            <Button type="submit" className="w-full h-14 text-xl font-bold bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-lg shadow-emerald-200">
+                                ПОТВЪРДИ
+                            </Button>
+                        </form>
                     ) : (
-                      <p className="text-xs text-slate-400 italic">
-                        Няма конфигурирани атрибути. Използвайте настройките на сградата, за да добавите атрибути.
-                      </p>
+                        <form onSubmit={handleChargeSubmit} className="space-y-4">
+                             <Input 
+                                placeholder="Причина (напр. Фонд Ремонт)" value={chargeDescription} onChange={e => setChargeDescription(e.target.value)}
+                                className="h-12 bg-white text-lg" required
+                             />
+                             <div className="relative">
+                                <Input 
+                                    type="number" value={chargeAmount} onChange={e => setChargeAmount(e.target.value)} 
+                                    placeholder="0.00" className="h-16 text-3xl font-bold text-center bg-white rounded-xl border-red-200 focus:ring-red-500" required
+                                />
+                                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">BGN</span>
+                            </div>
+                            <Button type="submit" className="w-full h-14 text-xl font-bold bg-red-500 hover:bg-red-600 text-white rounded-xl shadow-lg shadow-red-200">
+                                НАЧИСЛИ ДЪЛГ
+                            </Button>
+                        </form>
                     )}
-                  </div>
+
+                    <div className="pt-2">
+                        <Button 
+                            type="button" 
+                            variant="outline" 
+                            className="w-full h-12 rounded-xl border-slate-200 text-slate-600 hover:bg-white hover:text-blue-600"
+                            onClick={() => setView('history')}
+                        >
+                            <History className="w-4 h-4 mr-2"/> Виж пълна история
+                        </Button>
+                    </div>
                 </div>
-                
-                <DialogFooter className="!flex-col gap-2">
-                  <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800">
-                    ✅ Запази промените
-                  </Button>
-                  <Button 
-                    type="button"
-                    variant="destructive"
-                    className="w-full"
-                    onClick={handleDelete}
-                  >
-                    🗑️ Изтрий Апартамент
-                  </Button>
-                </DialogFooter>
-              </form>
-            ) : (
-              /* Payment Mode: Show Payment/Charge Form and History */
-              <>
-                {/* Toggle between Deposit and Charge */}
-                <div className="flex gap-2 mb-4 p-1 bg-slate-100 rounded-lg">
-                  <Button
-                    type="button"
-                    variant={!isChargeMode ? "default" : "ghost"}
-                    size="sm"
-                    className={`flex-1 ${!isChargeMode ? 'bg-slate-900 text-white' : ''}`}
-                    onClick={() => setIsChargeMode(false)}
-                  >
-                    Внеси
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={isChargeMode ? "default" : "ghost"}
-                    size="sm"
-                    className={`flex-1 ${isChargeMode ? 'bg-red-600 text-white hover:bg-red-700' : ''}`}
-                    onClick={() => setIsChargeMode(true)}
-                  >
-                    Начисли
-                  </Button>
-                </div>
+            )}
 
-                {!isChargeMode ? (
-                  /* Deposit Form */
-                  <form action={handleSubmit} className="grid gap-6 py-4">
-                      <input type="hidden" name="apartmentId" value={apt.id} />
-                      <input type="hidden" name="buildingId" value={buildingId} />
-                      
-                      <div className="space-y-3">
-                          {/* БУТОН ЗА БЪРЗО ПОГАСЯВАНЕ (Показва се само ако има дълг) */}
-                          {debt > 0 && (
-                              <div 
-                                  onClick={fillFullDebt}
-                                  className="cursor-pointer bg-red-50 border border-red-200 p-3 rounded-md flex justify-between items-center hover:bg-red-100 transition-colors"
-                              >
-                                  <div className="text-sm text-red-800">
-                                      Пълно задължение:
-                                  </div>
-                                  <div className="font-bold text-red-700">
-                                      {debt.toFixed(2)} лв.
-                                  </div>
-                                  <div className="text-xs bg-red-200 text-red-800 px-2 py-1 rounded">
-                                      Натисни за избор
-                                  </div>
-                              </div>
-                          )}
-
-                          <div className="grid w-full items-center gap-1.5">
-                              <Label htmlFor="amount">Сума за внасяне</Label>
-                              <div className="relative">
-                                  <Input
-                                      id="amount"
-                                      name="amount"
-                                      type="number"
-                                      step="0.01"
-                                      placeholder="0.00"
-                                      value={amount}
-                                      onChange={(e) => setAmount(e.target.value)}
-                                      className="pl-8 text-lg font-bold"
-                                      autoFocus
-                                  />
-                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">лв.</span>
-                              </div>
-                              <p className="text-xs text-slate-500">
-                                  Въведената сума ще бъде добавена към баланса.
-                              </p>
-                          </div>
-                      </div>
-                      
-                      <DialogFooter>
-                          <Button type="submit" className="w-full bg-slate-900 hover:bg-slate-800">
-                              ✅ Запиши Плащането
-                          </Button>
-                      </DialogFooter>
-                  </form>
-                ) : (
-                  /* Charge Form */
-                  <form onSubmit={handleChargeSubmit} className="grid gap-6 py-4">
-                      <div className="space-y-3">
-                          <div className="grid w-full items-center gap-1.5">
-                              <Label htmlFor="chargeDescription">Причина</Label>
-                              <Input
-                                  id="chargeDescription"
-                                  name="description"
-                                  type="text"
-                                  placeholder="Напр. Поправка на ключ, Стар дълг"
-                                  value={chargeDescription}
-                                  onChange={(e) => setChargeDescription(e.target.value)}
-                                  required
-                                  autoFocus
-                              />
-                          </div>
-
-                          <div className="grid w-full items-center gap-1.5">
-                              <Label htmlFor="chargeAmount">Сума</Label>
-                              <div className="relative">
-                                  <Input
-                                      id="chargeAmount"
-                                      name="amount"
-                                      type="number"
-                                      step="0.01"
-                                      placeholder="0.00"
-                                      value={chargeAmount}
-                                      onChange={(e) => setChargeAmount(e.target.value)}
-                                      className="pl-8 text-lg font-bold"
-                                      required
-                                  />
-                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">лв.</span>
-                              </div>
-                              <p className="text-xs text-slate-500">
-                                  Сумата ще бъде приспадната от баланса (задължение).
-                              </p>
-                          </div>
-                      </div>
-                      
-                      <DialogFooter>
-                          <Button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white">
-                              ⚠️ Начисли Задължение
-                          </Button>
-                      </DialogFooter>
-                  </form>
-                )}
-
-                {/* Payment History Section */}
-                <div className="mt-6 pt-6 border-t border-slate-200">
-                  <h3 className="text-sm font-semibold text-slate-700 mb-3">История на транзакциите</h3>
-                  <div className="max-h-[300px] overflow-y-auto space-y-2">
+            {/* VIEW: HISTORY */}
+            {view === 'history' && (
+                <div className="space-y-3 pb-6">
                     {!apt.payments || apt.payments.length === 0 ? (
-                      <p className="text-sm text-slate-400 text-center py-4">Няма история</p>
+                      <div className="text-center py-20 text-slate-400">
+                          <History className="w-12 h-12 mx-auto mb-3 opacity-20"/>
+                          <p>Няма записана история</p>
+                      </div>
                     ) : (
                       apt.payments.map((payment) => (
-                        <div
-                          key={payment.id}
-                          className="flex justify-between items-center p-3 bg-slate-50 rounded-md border border-slate-100"
-                        >
-                          <div className="flex flex-col gap-1">
-                            <span className="text-xs text-slate-500">
-                              {formatDate(payment.date)}
-                            </span>
-                            <span className="text-sm font-medium text-slate-700">
-                              {formatPaymentType(payment.type)}
-                            </span>
-                            {payment.description && (
-                              <span className="text-xs text-slate-400 italic">
-                                {payment.description}
-                              </span>
-                            )}
+                        <div key={payment.id} className="bg-white p-4 rounded-xl shadow-sm border border-slate-100 flex justify-between items-center">
+                          <div>
+                            <div className="font-bold text-slate-700 text-sm mb-1">{formatPaymentType(payment.type)}</div>
+                            <div className="text-xs text-slate-400 flex flex-col">
+                                <span>{formatDate(payment.date)}</span>
+                                {payment.description && <span className="text-slate-500 italic mt-0.5">{payment.description}</span>}
+                            </div>
                           </div>
-                          <div className={`font-bold ${
-                            payment.type === 'MONTHLY_FEE' || payment.type === 'CUSTOM_CHARGE'
-                              ? 'text-red-500' 
-                              : payment.type === 'DEPOSIT' 
-                              ? 'text-emerald-600' 
-                              : 'text-slate-700'
+                          <span className={`text-lg font-bold ${
+                            ['MONTHLY_FEE', 'CUSTOM_CHARGE'].includes(payment.type) ? 'text-red-500' : 'text-emerald-600'
                           }`}>
-                            {payment.type === 'MONTHLY_FEE' || payment.type === 'CUSTOM_CHARGE' ? '-' : '+'}
-                            {Math.abs(payment.amount).toFixed(2)} лв.
-                          </div>
+                            {['MONTHLY_FEE', 'CUSTOM_CHARGE'].includes(payment.type) ? '-' : '+'}{Math.abs(payment.amount).toFixed(2)}
+                          </span>
                         </div>
                       ))
                     )}
-                  </div>
                 </div>
-              </>
             )}
-          </DialogContent>
-        </Dialog>
-      </div>
-    </div>
+
+            {/* VIEW: EDIT */}
+            {view === 'edit' && (
+                <form onSubmit={handleEditSubmit} className="space-y-4">
+                    <div className="space-y-2">
+                        <Label>Име на собственик</Label>
+                        <Input value={ownerName} onChange={e => setOwnerName(e.target.value)} className="h-12 text-lg bg-white" />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Живущи</Label>
+                        <Input type="number" value={residents} onChange={e => setResidents(e.target.value)} className="h-12 text-lg bg-white" />
+                    </div>
+                    
+                    <div className="space-y-2 pt-2">
+                        <Label>Екстри (Такси)</Label>
+                        <div className="grid grid-cols-1 gap-2">
+                            {feeConfig?.map((item) => (
+                                <div key={item.id} onClick={() => toggleAttribute(item.id)} className={`p-3 rounded-xl border-2 cursor-pointer flex justify-between items-center ${attributes.includes(item.id) ? 'border-blue-500 bg-blue-50' : 'border-transparent bg-white'}`}>
+                                    <span className="font-medium">{item.label}</span>
+                                    <span className="text-xs bg-slate-200 px-2 py-1 rounded">{parseFloat(item.price).toFixed(2)} лв.</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="pt-4 space-y-3">
+                         <Button type="submit" className="w-full h-12 bg-slate-900 rounded-xl">Запази промените</Button>
+                         <Button type="button" variant="ghost" className="w-full text-red-500 h-12" onClick={handleDelete}>Изтрий апартамента</Button>
+                    </div>
+                </form>
+            )}
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
