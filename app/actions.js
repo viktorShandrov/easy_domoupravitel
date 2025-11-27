@@ -602,20 +602,24 @@ export async function updateSignalResident(formData) {
     return { success: false, message: "Грешка при обновяване на сигнал!" }
   }
 }
-
 // --- ФУНКЦИЯ 14: ОБНОВЯВАНЕ НА НАСТРОЙКИ НА СГРАДА ---
 export async function updateBuildingSettings(formData) {
   const buildingId = formData.get('buildingId')
   const publicDisplayBalance = formData.get('publicDisplayBalance') === 'true'
+  const telegramChatId = formData.get('telegramChatId')
+  
+  // Нови полета
+  const managerName = formData.get('managerName') || ''
+  const isManagerCashier = formData.get('isManagerCashier') === 'true'
+  // Ако отметката е сложена, касиерът е домоуправителя, иначе взимаме каквото е написано
+  let cashierName = isManagerCashier ? managerName : (formData.get('cashierName') || '')
+
   const feeConfigJson = formData.get('feeConfig')
-  const telegramChatId = formData.get('telegramChatId') // Get telegramChatId from form data
-console.log(telegramChatId);
 
   if (!buildingId) {
     return { success: false, message: "Невалидни данни!" }
   }
 
-  // Проверяваме дали сградата принадлежи на потребителя
   const isOwner = await verifyBuildingOwnership(buildingId)
   if (!isOwner) {
     return { success: false, message: "Нямате достъп до тази сграда!" }
@@ -636,12 +640,16 @@ console.log(telegramChatId);
       data: {
         publicDisplayBalance,
         feeConfig,
-        telegramChatId: telegramChatId || null, // Update telegramChatId
+        telegramChatId: telegramChatId || null,
+        // Записваме новите имена
+        managerName,
+        cashierName,
+        isManagerCashier
       },
     })
 
     revalidatePath('/')
-    return { success: true, message: "Настройките на сградата са обновени успешно!" }
+    return { success: true, message: "Настройките са обновени успешно!" }
   } catch (error) {
     console.error("Error updating building settings:", error)
     return { success: false, message: "Грешка при обновяване на настройките!" }
@@ -700,6 +708,106 @@ export async function getBuildingSignals(buildingId) {
   } catch (error) {
     console.error("Error fetching signals:", error)
     return []
+  }
+}
+
+
+// ... (съществуващия код в actions.js)
+
+// --- ФУНКЦИЯ 18: ВЗИМАНЕ НА ДАННИ ЗА МЕСЕЧЕН ОТЧЕТ ---
+export async function getMonthlyReportData(buildingId, month, year) {
+  const { userId } = await auth()
+  if (!userId) return { success: false }
+
+  // 1. Дефинираме времевите рамки
+  const startDate = new Date(year, month - 1, 1) // Начало на месеца
+  const endDate = new Date(year, month, 0, 23, 59, 59) // Край на месеца
+
+  try {
+    // 2. Взимаме сградата
+    const building = await prisma.building.findUnique({
+      where: { id: buildingId },
+      include: {
+        apartments: {
+            orderBy: { number: 'asc' }
+        }
+      }
+    })
+
+    if (!building) return { success: false, message: "Сградата липсва" }
+
+    // 3. Изчисляване на НАЧАЛНО САЛДО (Всичко, случило се ПРЕДИ този месец)
+    // Трябва да сумираме всички приходи и разходи от началото на времето до startDate
+    
+    // Сума на всички плащания (приходи) преди началото на месеца
+    const pastIncomes = await prisma.payment.aggregate({
+        where: {
+            apartment: { buildingId }, // Всички плащания в тази сграда
+            date: { lt: startDate }
+        },
+        _sum: { amount: true }
+    })
+
+    // Сума на всички разходи преди началото на месеца
+    const pastExpenses = await prisma.expense.aggregate({
+        where: {
+            buildingId,
+            date: { lt: startDate }
+        },
+        _sum: { amount: true }
+    })
+
+    const openingBalance = (pastIncomes._sum.amount || 0) - (pastExpenses._sum.amount || 0)
+
+    // 4. Движения за ТЕКУЩИЯ месец
+    const currentIncomes = await prisma.payment.findMany({
+        where: {
+            apartment: { buildingId },
+            date: { gte: startDate, lte: endDate }
+        },
+        include: { apartment: true },
+        orderBy: { date: 'asc' }
+    })
+
+    const currentExpenses = await prisma.expense.findMany({
+        where: {
+            buildingId,
+            date: { gte: startDate, lte: endDate }
+        },
+        orderBy: { date: 'asc' }
+    })
+
+    // 5. Длъжници (Всички, които са на минус в момента)
+    const debtors = building.apartments
+        .filter(apt => apt.balance < 0)
+        .map(apt => ({
+            number: apt.number,
+            ownerName: apt.ownerName,
+            amount: Math.abs(apt.balance)
+        }))
+        .sort((a, b) => b.amount - a.amount) // Най-големите длъжници най-отгоре
+
+    return {
+        success: true,
+        data: {
+            buildingName: building.name,
+            address: building.address,
+            slug: building.slug,
+            period: { month, year },
+            openingBalance,
+            incomes: currentIncomes,
+            expenses: currentExpenses,
+            debtors,
+            // Крайно салдо за месеца = Начално + Приходи - Разходи
+            closingBalance: openingBalance + 
+                            currentIncomes.reduce((acc, curr) => acc + curr.amount, 0) - 
+                            currentExpenses.reduce((acc, curr) => acc + curr.amount, 0)
+        }
+    }
+
+  } catch (error) {
+    console.error("Report Data Error:", error)
+    return { success: false, message: "Грешка при извличане на данни" }
   }
 }
 

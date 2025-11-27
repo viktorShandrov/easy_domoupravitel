@@ -26,6 +26,9 @@ model Building {
   expenses             Expense[]   // Връзка: Една сграда има много разходи
   signals              Signal[]    // Връзка: Една сграда има много сигнали
   createdAt            DateTime    @default(now())
+  managerName      String?  @default("") // Име на Домоуправител
+  cashierName      String?  @default("") // Име на Касиер
+  isManagerCashier Boolean  @default(true) // Дали са един и същ човек
 }
 
 model Apartment {

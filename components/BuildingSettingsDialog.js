@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch" // Трябва да имаш този компонент
+import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
@@ -15,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Settings } from "lucide-react"
+import { Settings, Plus, User } from "lucide-react"
 import { updateBuildingSettings } from "../app/actions"
 
 export default function BuildingSettingsDialog({ building }) {
@@ -23,18 +23,22 @@ export default function BuildingSettingsDialog({ building }) {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   // --- STATE ЗА НАСТРОЙКИТЕ ---
-  
-  // 1. Общи настройки (Видимост на касата)
-  // Използваме '?? true', за да е включено по подразбиране, ако е null
   const [publicDisplayBalance, setPublicDisplayBalance] = useState(building.publicDisplayBalance ?? true)
+  
+  // STATE ЗА ИМЕНАТА
+  const [managerName, setManagerName] = useState(building.managerName || '')
+  const [cashierName, setCashierName] = useState(building.cashierName || '')
+  const [isManagerCashier, setIsManagerCashier] = useState(building.isManagerCashier ?? true)
 
-  // 2. Конфигурация на таксите (Куче, Асансьор...)
   const [config, setConfig] = useState([])
 
   // Синхронизиране при отваряне на модала
   useEffect(() => {
     if (isOpen) {
         setPublicDisplayBalance(building.publicDisplayBalance ?? true)
+        setManagerName(building.managerName || '')
+        setCashierName(building.cashierName || '')
+        setIsManagerCashier(building.isManagerCashier ?? true)
         
         if (building.feeConfig && Array.isArray(building.feeConfig)) {
             setConfig([...building.feeConfig])
@@ -44,8 +48,14 @@ export default function BuildingSettingsDialog({ building }) {
     }
   }, [isOpen, building])
 
-  // --- ЛОГИКА ЗА АТРИБУТИ ---
+  // Ако потребителят цъкне "Касиерът е домоуправителя", копираме името
+  useEffect(() => {
+    if (isManagerCashier) {
+        setCashierName(managerName)
+    }
+  }, [isManagerCashier, managerName])
 
+  // --- ЛОГИКА ЗА АТРИБУТИ ---
   function addAttribute() {
     const newId = `attr_${Date.now()}`
     setConfig([...config, { id: newId, label: '', price: 0 }])
@@ -61,22 +71,24 @@ export default function BuildingSettingsDialog({ building }) {
     setConfig(updated)
   }
 
-  // --- ЗАПИСВАНЕ ---
-
+  // --- ЗАПИСВАНЕ НА НАСТРОЙКИ ---
   async function handleSubmit(e) {
-    // Може да се извика от бутона, не е задължително да е form submit event
     if (e) e.preventDefault()
-    
     setIsSubmitting(true)
 
-    // Валидация на атрибутите (да не записваме празни редове)
     const validConfig = config.filter(item => item.label && item.id)
     
     const formData = new FormData()
     formData.append('buildingId', building.id)
-    // Важно: превръщаме boolean в string за FormData
     formData.append('publicDisplayBalance', publicDisplayBalance) 
+    
+    // Добавяме имената към формата
+    formData.append('managerName', managerName)
+    formData.append('cashierName', cashierName)
+    formData.append('isManagerCashier', isManagerCashier)
+
     formData.append('feeConfig', JSON.stringify(validConfig))
+    if(building.telegramChatId) formData.append('telegramChatId', building.telegramChatId)
 
     const result = await updateBuildingSettings(formData)
     
@@ -97,24 +109,92 @@ export default function BuildingSettingsDialog({ building }) {
         </Button>
       </DialogTrigger>
       
-      <DialogContent className="sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-slate-800 text-xl">
             Настройки на Входа
           </DialogTitle>
           <DialogDescription>
-            Управлявайте видимостта на данните и автоматичните такси.
+            Управлявайте видимостта, имената на управата и таксите.
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="general" className="w-full mt-4">
             <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="general">🛠️ Общи & Поверителност</TabsTrigger>
-                <TabsTrigger value="fees">🐶 Такси & Атрибути</TabsTrigger>
+                <TabsTrigger value="general">🛠️ Общи</TabsTrigger>
+                <TabsTrigger value="fees">🐶 Такси</TabsTrigger>
             </TabsList>
 
             {/* --- ТАБ 1: ОБЩИ НАСТРОЙКИ --- */}
-            <TabsContent value="general" className="space-y-4 border rounded-md p-4 bg-slate-50/50">
+            <TabsContent value="general" className="space-y-6 border rounded-md p-4 bg-slate-50/50">
+                
+                {/* СЕКЦИЯ: УПРАВА */}
+                <div className="bg-white p-4 rounded-lg border shadow-sm space-y-4">
+                    <h3 className="text-sm font-bold text-gray-800 flex items-center gap-2 border-b pb-2">
+                        <User className="w-4 h-4 text-blue-500"/> Управителен Съвет
+                    </h3>
+                    
+                    {/* Домоуправител */}
+                    <div className="space-y-2">
+                        <Label htmlFor="managerName">Име на Домоуправител</Label>
+                        <Input 
+                            id="managerName"
+                            placeholder="Иван Петров" 
+                            value={managerName}
+                            onChange={(e) => setManagerName(e.target.value)}
+                        />
+                    </div>
+
+                    {/* Отметка за касиер */}
+                    <div className="flex flex-row items-center justify-between rounded-lg border p-3 bg-slate-50">
+                        <div className="space-y-0.5">
+                            <Label className="text-sm font-medium">Касиерът е домоуправителя</Label>
+                            <p className="text-xs text-slate-500">
+                                Включете, ако едно лице изпълнява и двете длъжности.
+                            </p>
+                        </div>
+                        <Switch 
+                            checked={isManagerCashier}
+                            onCheckedChange={setIsManagerCashier}
+                        />
+                    </div>
+
+                    {/* Касиер (Показва се само ако е различен човек) */}
+                    {!isManagerCashier && (
+                        <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                            <Label htmlFor="cashierName">Име на Касиер</Label>
+                            <Input 
+                                id="cashierName"
+                                placeholder="Мария Иванова" 
+                                value={cashierName}
+                                onChange={(e) => setCashierName(e.target.value)}
+                            />
+                        </div>
+                    )}
+                </div>
+
+
+                <div className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm bg-white">
+                    <div className="space-y-0.5">
+                        <Label className="text-base font-semibold">Публична Каса</Label>
+                        <p className="text-xs text-slate-500">
+                            Показвай наличната сума (Кеш) в портала за живущи.
+                        </p>
+                    </div>
+                    <Switch 
+                        checked={publicDisplayBalance}
+                        onCheckedChange={setPublicDisplayBalance}
+                    />
+                </div>
+                <div className="text-xs text-slate-400 italic px-2">
+                    * Ако изключите тази опция, съседите ще виждат само своите задължения и списъка с разходи, но не и колко пари държите в наличност. Това се препоръчва за сигурност, ако държите големи суми в брой.
+                </div>
+                <br></br>
+                <br></br>
+
+
+                {/* Telegram секция */}
+                
                                 <div className="bg-yellow-50 p-6 rounded-lg border border-yellow-200">
                   <h3 className="text-lg font-bold text-gray-800 mb-2">Свързване с Telegram</h3>
                   
@@ -151,29 +231,16 @@ export default function BuildingSettingsDialog({ building }) {
 
 
                 
-                <div className="flex flex-row items-center justify-between rounded-lg border p-4 shadow-sm bg-white">
-                    <div className="space-y-0.5">
-                        <Label className="text-base font-semibold">Публична Каса</Label>
-                        <p className="text-xs text-slate-500">
-                            Показвай наличната сума (Кеш) в портала за живущи.
-                        </p>
-                    </div>
-                    <Switch 
-                        checked={publicDisplayBalance}
-                        onCheckedChange={setPublicDisplayBalance}
-                    />
-                </div>
-                <div className="text-xs text-slate-400 italic px-2">
-                    * Ако изключите тази опция, съседите ще виждат само своите задължения и списъка с разходи, но не и колко пари държите в наличност. Това се препоръчва за сигурност, ако държите големи суми в брой.
-                </div>
+                
+
+                
             </TabsContent>
 
-            {/* --- ТАБ 2: ТАКСИ И АТРИБУТИ --- */}
+            {/* --- ТАБ 2: ТАКСИ --- */}
             <TabsContent value="fees" className="space-y-4">
                 <div className="p-4 bg-blue-50 border border-blue-100 rounded-md text-xs text-blue-800 mb-4">
-                    Тук дефинирате допълнителните такси. След като ги добавите, ще можете да ги избирате (чрез чекбокс) за всеки апартамент поотделно.
+                    Тук дефинирате допълнителните такси (напр. Куче, Втори асансьор).
                 </div>
-
                 <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
                     {config.length === 0 ? (
                         <div className="text-center py-8 text-slate-400 border-2 border-dashed rounded-lg">
@@ -187,7 +254,7 @@ export default function BuildingSettingsDialog({ building }) {
                                     <Input 
                                         value={item.label} 
                                         onChange={(e) => updateAttribute(index, 'label', e.target.value)}
-                                        placeholder="Напр. Куче, Втори асансьор" 
+                                        placeholder="Напр. Куче" 
                                         className="h-9"
                                     />
                                 </div>
@@ -204,8 +271,7 @@ export default function BuildingSettingsDialog({ building }) {
                                     variant="ghost" 
                                     size="icon" 
                                     onClick={() => removeAttribute(index)}
-                                    className="h-9 w-9 text-red-500 hover:bg-red-50 hover:text-red-700"
-                                    title="Изтрий"
+                                    className="h-9 w-9 text-red-500 hover:bg-red-50"
                                 >
                                     ✕
                                 </Button>
@@ -213,34 +279,18 @@ export default function BuildingSettingsDialog({ building }) {
                         ))
                     )}
                 </div>
-
-                <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={addAttribute}
-                    className="w-full border-dashed border-slate-300 hover:border-slate-400 hover:bg-slate-50"
-                >
-                    + Добави нов атрибут
+                <Button type="button" variant="outline" onClick={addAttribute} className="w-full border-dashed border-slate-300">
+                    <Plus className="w-4 h-4 mr-2"/> Добави такса
                 </Button>
             </TabsContent>
         </Tabs>
 
-        <DialogFooter className="mt-6">
-          <Button 
-            type="button" 
-            variant="outline" 
-            onClick={() => setIsOpen(false)}
-            disabled={isSubmitting}
-          >
-            Отказ
+        <DialogFooter className="mt-6 flex justify-between items-center w-full">
+          <Button type="button" variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>
+            Затвори
           </Button>
-          <Button 
-            type="button" // Промених на type="button" и onClick, за да избегнем форми вътре във форми ако има
-            onClick={handleSubmit}
-            className="bg-slate-900 hover:bg-slate-800 min-w-[120px]"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Запазване...' : '✅ Запази Всичко'}
+          <Button type="button" onClick={handleSubmit} className="bg-slate-900 hover:bg-slate-800" disabled={isSubmitting}>
+            {isSubmitting ? 'Запазване...' : 'Запази Настройките'}
           </Button>
         </DialogFooter>
 
