@@ -1,36 +1,121 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 🏢 Easy Domoupravitel (Лесен Домоуправител)
 
-## Getting Started
+Модерна уеб платформа за дигитално, прозрачно и автоматизирано управление на етажна собственост.
 
-First, run the development server:
+---
 
+## 📖 За проекта
+
+**Easy Domoupravitel** е съвременно SaaS решение, създадено да улесни ежедневието на професионалните и независимите домоуправители, както и на всички живущи в сградата. Платформата заменя остарелите хартиени тетрадки и сложни Excel таблици с интуитивен, централизиран уеб панел и защитен портал за обитателите.
+
+---
+
+## 🎯 Предизвикателство и решение
+
+### Предизвикателството:
+* **Липса на прозрачност:** Живущите често нямат ясна видимост за състоянието на входа, наличността в касата и за какво се харчат събраните средства.
+* **Хаос в събирането на такси:** Неясноти около брой обитатели, домашни любимци, асансьорни такси и извънредни ремонти водят до натрупване на несъбрани задължения.
+* **Трудна комуникация:** Сигналите за аварии (изгорели крушки, повреден асансьор, течове) се предават устно, забравят се или липсва проследимост за тяхното отстраняване.
+* **Тромаво отчитане:** Генерирането на месечни отчети и бележки за таблото отнема часове ръчна работа.
+
+### Решението:
+**Easy Domoupravitel** автоматизира финансовите потоци и осигурява двупосочна прозрачна връзка между управата и жителите:
+* Автоматично начисляване на месечни такси според зададени правила и атрибути на имотите.
+* Публичен портал за жителите с уникален линк/QR код – без нужда от сложна регистрация за преглед на задълженията.
+* Интегрирана система за подаване и управление на сигнали в реално време с мигновени известия през Telegram.
+* Моментален експорт на готови за печат финансови отчети и месечни ведомости в PDF формат.
+
+---
+
+## ✨ Ключови функционалности
+
+### 🏢 1. Управление на сгради и имоти
+* Поддръжка на множество сгради и входове в един профил.
+* Детайлни профили на апартаментите: брой обитатели, собственици, текущ баланс (+ депозит / - задължение).
+* **Гъвкави ценови правила:** Конфигуриране на такси по подразбиране или специфични атрибути (напр. домашен любимец, асансьор, общи части).
+
+### 💳 2. Финансов мениджмънт и каса
+* **Начисляване на такси:** Масово автоматично начисляване на месечни вноски или индивидуални извънредни такси.
+* **Плащания и депозити:** Регистриране на плащания и водене на история за всяко жилище.
+* **Проследяване на разходите:** Въвеждане на текущи разходи за консумативи и ремонти с възможност за прикачване на касови бележки и фактури.
+* Автоматично следене и визуализация на общата наличност в касата.
+
+### 🌐 3. Публичен портал за живущи
+* Всеки вход разполага с уникален защитен адрес (slug) и **QR код** за лесно сканиране от информационното табло.
+* Живущите могат по всяко време да проверят дължимите суми и наличността по касата.
+* Възможност за настройка на видимостта (скриване/показване на общата каса).
+
+### ⚠️ 4. Система за аварии и сигнали
+* Жителите могат директно да подават сигнали за възникнали проблеми през портала.
+* Всеки подаден сигнал разполага с уникален секретен ключ за редактиране от подателя.
+* Домоуправителят следи и сменя статусите на сигналите (**OPEN** / **RESOLVED**).
+
+### 🤖 5. Telegram интеграция и нотификации
+* Бързо сдвояване на сграда с Telegram група или чат чрез 6-цифрен код.
+* Моментални автоматични известия в Telegram при постъпване на нов сигнал или важна промяна.
+
+### 📄 6. PDF отчети и печат
+* Генериране на структурирани финансови справки и ведомости с един клик.
+* Оптимизирани за директен печат и поставяне на информационното табло във входа.
+
+---
+
+## 🛠️ Технологичен стек
+
+| Категория | Технология | Описание |
+|---|---|---|
+| **Frontend** | [Next.js 16 (App Router)](https://nextjs.org/) | React рамка с Server Components и Server Actions |
+| **UI библиотека** | [React 19](https://react.dev/), [Tailwind CSS v4](https://tailwindcss.com/) | Модерен, адаптивен и бърз потребителски интерфейс |
+| **UI Компоненти** | [Radix UI](https://www.radix-ui.com/) / shadcn/ui, [Lucide Icons](https://lucide.dev/) | Достъпни и консистентни UI примитиви |
+| **Автентикация** | [Clerk](https://clerk.com/) | Сигурно вписване, управление на потребители и изолация на данните |
+| **База данни & ORM** | [PostgreSQL (Supabase)](https://supabase.com/), [Prisma ORM](https://www.prisma.io/) | Релационна база данни с типова сигурност и оптимизиран connection pooler |
+| **Нотификации & Бот** | `node-telegram-bot-api` | Telegram Bot API интеграция за нотификации в реално време |
+| **Документи & Експорт** | `jspdf`, `jspdf-autotable`, `@react-pdf/renderer`, `qrcode` | Генериране на PDF отчети и динамични QR кодове |
+
+---
+
+## 🚀 Инсталация и локално стартиране
+
+### 1. Клониране на хранилището
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/viktorShandrov/easy_domoupravitel.git
+cd easy_domoupravitel
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Инсталиране на пакетите
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+### 3. Настройка на променливите на средата (`.env`)
+Създайте `.env` файл в основната директория със следното съдържание:
+```env
+# Database (PostgreSQL / Supabase)
+DATABASE_URL="postgresql://user:password@host:5432/postgres"
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+# Clerk Authentication
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="pk_test_..."
+CLERK_SECRET_KEY="sk_test_..."
 
-## Learn More
+# Telegram Bot (Опционално)
+TELEGRAM_BOT_TOKEN="your_telegram_bot_token"
+```
 
-To learn more about Next.js, take a look at the following resources:
+### 4. Синхронизиране на базата данни
+```bash
+npx prisma generate
+npx prisma db push
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 5. Стартиране на проекта в dev режим
+```bash
+npm run dev
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Отворете [http://localhost:3000](http://localhost:3000) във вашия браузър.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 📄 Лиценз
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Този проект е с отворен код и е достъпен под [MIT лиценз](LICENSE).
